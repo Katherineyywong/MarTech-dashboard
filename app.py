@@ -98,7 +98,7 @@ TEXTS = {
         "footer": "指標說明：毛利率 = 利潤 / 營收；平均客單價 = 營收 / 訂單數。",
     },
     "en": {
-        "title": "MarTech行銷報表",
+        "title": "MarTech Marketing Dashboard",
         "subtitle": "Track growth and profitability across sales, customer, product, store, and discount dimensions",
         "lang": "Language",
         "theme": "Theme",
@@ -1146,9 +1146,9 @@ def render_data_quality(quality: pd.DataFrame, lang: str) -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="MarTech行銷報表", page_icon="📊", layout="wide")
-
     _lang_now = st.session_state.get("_lang_sel", "zh-TW")
+    _page_title = "MarTech Marketing Dashboard" if _lang_now == "en" else "MarTech行銷報表"
+    st.set_page_config(page_title=_page_title, page_icon="📊", layout="wide")
     _lang_label = "語言" if _lang_now == "zh-TW" else "Language"
     _LANG_DISPLAY = {"zh-TW": "繁體中文 / Traditional Chinese", "en": "英文 / English"}
     lang = st.sidebar.selectbox(
