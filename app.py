@@ -403,6 +403,18 @@ def _inject_style(theme: str = "white") -> None:
             [data-testid="stSidebar"] [data-baseweb="checkbox"] span {{
                 border-color: rgba(240,246,252,0.35) !important;
             }}
+            /* ── Top header bar ── */
+            [data-testid="stHeader"] {{
+                background: #0d1117 !important;
+                border-bottom: 1px solid rgba(240,246,252,0.09) !important;
+            }}
+            [data-testid="stToolbar"] button svg,
+            [data-testid="stHeader"] button svg {{
+                fill: #8b949e !important;
+            }}
+            [data-testid="stDecoration"] {{
+                background: #0d1117 !important;
+            }}
             ''' if theme == "black" else ""}
         </style>
         """,
