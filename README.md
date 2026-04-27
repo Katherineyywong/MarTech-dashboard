@@ -1,4 +1,4 @@
-# dashboard-demo5
+# MarTech-dashboard
 
 MarTech dashboard demo built with Streamlit. It reads CSV files from `data/` and provides bilingual (zh-TW / EN) KPI views for revenue, customer, product, store, and discount analysis.
 
