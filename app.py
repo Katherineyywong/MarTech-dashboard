@@ -924,21 +924,26 @@ def render_cac_ltv_analysis(df: pd.DataFrame, lang: str) -> None:
     col1, col2, col3 = st.columns(3)
     col1.metric(t(lang, "cac"), f"${cac:,.2f}")
     col2.metric(t(lang, "ltv"), f"${existing_ltv:,.2f}")
-    col3.metric(t(lang, "ltv_cac_ratio"), f"{ltv_ratio:.2f}x", f"{'✅ Healthy' if ltv_ratio >= 3 else '⚠️ Needs Improvement'}")
-    
+    _health = ("✅ 健康" if ltv_ratio >= 3 else "⚠️ 需改善") if lang == "zh-TW" else ("✅ Healthy" if ltv_ratio >= 3 else "⚠️ Needs Improvement")
+    col3.metric(t(lang, "ltv_cac_ratio"), f"{ltv_ratio:.2f}x", _health)
+
+    _type_col = "客戶類別" if lang == "zh-TW" else "Customer Type"
+    _ltv_col  = "平均 LTV" if lang == "zh-TW" else "Avg LTV"
+    _ord_col  = "訂單數"   if lang == "zh-TW" else "Orders"
+    _types    = ["新客", "舊客"] if lang == "zh-TW" else ["New", "Existing"]
     cohort_comparison = pd.DataFrame({
-        "Customer Type": ["New", "Existing"],
-        "Avg LTV": [new_ltv, existing_ltv],
-        "Orders": [
+        _type_col: _types,
+        _ltv_col: [new_ltv, existing_ltv],
+        _ord_col: [
             new_customers["customer_id"].nunique(),
             existing_customers["customer_id"].nunique()
         ]
     })
     cohort_fig = px.bar(
         cohort_comparison,
-        x="Customer Type",
-        y="Avg LTV",
-        color="Orders",
+        x=_type_col,
+        y=_ltv_col,
+        color=_ord_col,
         title=t(lang, "cohort_ltv_title"),
         template=_plotly_tpl(),
     )
@@ -972,7 +977,10 @@ def render_promo_roi_analysis(df: pd.DataFrame, lang: str) -> None:
     best_roi = roi_analysis.loc[roi_analysis["roi_percent"].idxmax()] if len(roi_analysis) > 0 else None
     
     if best_roi is not None:
-        st.success(f"Best strategy: {best_roi['discount_bucket']} (ROI: {best_roi['roi_percent']:.2f}%)")
+        if lang == "zh-TW":
+            st.success(f"最佳策略：{best_roi['discount_bucket']}（ROI：{best_roi['roi_percent']:.2f}%）")
+        else:
+            st.success(f"Best strategy: {best_roi['discount_bucket']} (ROI: {best_roi['roi_percent']:.2f}%)")
     
     roi_fig = px.bar(
         roi_analysis,
@@ -987,19 +995,23 @@ def render_promo_roi_analysis(df: pd.DataFrame, lang: str) -> None:
     roi_fig.update_layout(height=400, hovermode="x unified")
     st.plotly_chart(roi_fig, use_container_width=True)
 
-    st.markdown("**ROI Analysis Detail**")
+    st.markdown("**" + ("ROI 分析明細" if lang == "zh-TW" else "ROI Analysis Detail") + "**")
     roi_display = roi_analysis[["discount_bucket", "orders", "revenue", "profit", "discount_cost", "roi_percent"]].copy()
-    roi_display.columns = ["Discount Bucket", "Orders", "Revenue ($)", "Profit ($)", "Discount Cost ($)", "ROI (%)"]
+    if lang == "zh-TW":
+        roi_cols = ["折扣區間", "訂單數", "營收 ($)", "利潤 ($)", "折扣成本 ($)", "ROI (%)"]
+    else:
+        roi_cols = ["Discount Bucket", "Orders", "Revenue ($)", "Profit ($)", "Discount Cost ($)", "ROI (%)"]
+    roi_display.columns = roi_cols
     st.dataframe(
         roi_display,
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Orders":            st.column_config.NumberColumn(format="%,d"),
-            "Revenue ($)":       st.column_config.NumberColumn(format="$%,.0f"),
-            "Profit ($)":        st.column_config.NumberColumn(format="$%,.0f"),
-            "Discount Cost ($)": st.column_config.NumberColumn(format="$%,.0f"),
-            "ROI (%)":           st.column_config.NumberColumn(format="%.2f%%"),
+            roi_cols[1]: st.column_config.NumberColumn(format="%,d"),
+            roi_cols[2]: st.column_config.NumberColumn(format="$%,.0f"),
+            roi_cols[3]: st.column_config.NumberColumn(format="$%,.0f"),
+            roi_cols[4]: st.column_config.NumberColumn(format="$%,.0f"),
+            roi_cols[5]: st.column_config.NumberColumn(format="%.2f%%"),
         },
     )
 
@@ -1053,13 +1065,11 @@ def render_threat_alert(df: pd.DataFrame, lang: str) -> None:
         if len(churn_risk) == 0:
             st.info(t(lang, "no_alerts"))
         else:
-            churn_risk_display = churn_risk[["customer_id", "rfm_segment", "recency_days", "frequency", "monetary", "churn_score"]].copy()
-            churn_risk_display.columns = ["客戶", "RFM", "天數", "頻次", "金額", "風險分"]
-            
+            _risk_label = "風險分" if lang == "zh-TW" else "Risk"
             for _, row in churn_risk.head(5).iterrows():
                 risk_level = "🔴 " if row["churn_score"] > 0.7 else ("🟠 " if row["churn_score"] > 0.5 else "🟡 ")
                 st.warning(
-                    f"{risk_level} {row['customer_id']} | RFM: {row['rfm_segment']} | Risk: {row['churn_score']:.2f}"
+                    f"{risk_level} {row['customer_id']} | RFM: {row['rfm_segment']} | {_risk_label}: {row['churn_score']:.2f}"
                 )
     
     with alert_cols[1]:
@@ -1068,23 +1078,29 @@ def render_threat_alert(df: pd.DataFrame, lang: str) -> None:
         if len(margin_decline) == 0:
             st.info(t(lang, "no_alerts"))
         else:
+            _margin_lbl = "毛利率" if lang == "zh-TW" else "Margin"
+            _qty_lbl    = "銷量"   if lang == "zh-TW" else "Volume"
             for _, row in margin_decline.head(5).iterrows():
                 st.error(
-                    f"⛔ {row['product_name']} | 毛利率: {row['margin_rate']:.2%} | 銷量: {row['quantity']:,}"
+                    f"⛔ {row['product_name']} | {_margin_lbl}: {row['margin_rate']:.2%} | {_qty_lbl}: {row['quantity']:,}"
                 )
     
     st.markdown("---")
     st.markdown(f"**{t(lang, 'churn_detail_title')}**")
     churn_detail = churn_risk.head(10)[["customer_id", "rfm_segment", "recency_days", "frequency", "monetary"]].copy()
-    churn_detail.columns = ["Customer ID", "RFM Segment", "Recency (days)", "Frequency", "Monetary ($)"]
+    if lang == "zh-TW":
+        churn_cols = ["客戶 ID", "RFM 客群", "天數", "頻次", "金額 ($)"]
+    else:
+        churn_cols = ["Customer ID", "RFM Segment", "Recency (days)", "Frequency", "Monetary ($)"]
+    churn_detail.columns = churn_cols
     st.dataframe(
         churn_detail,
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Recency (days)": st.column_config.NumberColumn(format="%,d days"),
-            "Frequency":      st.column_config.NumberColumn(format="%,d"),
-            "Monetary ($)":   st.column_config.NumberColumn(format="$%,.0f"),
+            churn_cols[2]: st.column_config.NumberColumn(format="%,d days" if lang == "en" else "%,d 天"),
+            churn_cols[3]: st.column_config.NumberColumn(format="%,d"),
+            churn_cols[4]: st.column_config.NumberColumn(format="$%,.0f"),
         },
     )
 
