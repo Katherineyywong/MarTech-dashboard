@@ -439,7 +439,8 @@ def _build_merged_from_csv(base_dir: Path) -> pd.DataFrame:
 
     merged["gross_sales"] = merged["quantity"] * merged["unit_price"]
     merged["discount_amount"] = (merged["gross_sales"] - merged["revenue"]).clip(lower=0)
-    merged["margin_rate"] = (merged["profit"] / merged["revenue"]).replace([float("inf"), -float("inf")], 0).fillna(0)
+    _safe_rev = merged["revenue"].where(merged["revenue"] != 0)
+    merged["margin_rate"] = (merged["profit"] / _safe_rev).fillna(0)
     merged["avg_order_value"] = merged["revenue"]
 
     merged["age_bucket"] = pd.cut(
@@ -449,7 +450,7 @@ def _build_merged_from_csv(base_dir: Path) -> pd.DataFrame:
         include_lowest=True,
     )
     tenure_days = (merged["order_date"] - merged["join_date"]).dt.days
-    merged["customer_stage"] = pd.Series(pd.NA, index=merged.index)
+    merged["customer_stage"] = None
     merged.loc[tenure_days <= 90, "customer_stage"] = "new"
     merged.loc[tenure_days > 90, "customer_stage"] = "existing"
 
@@ -953,7 +954,8 @@ def render_promo_roi_analysis(df: pd.DataFrame, lang: str) -> None:
     
     # profit already reflects discount deduction (revenue = gross_sales - discount)
     # ROI = profit return per dollar of discount invested
-    roi_analysis["roi_percent"] = (roi_analysis["profit"] / roi_analysis["discount_cost"] * 100).fillna(0).replace([float("inf"), -float("inf")], 0)
+    _safe_cost = roi_analysis["discount_cost"].where(roi_analysis["discount_cost"] != 0)
+    roi_analysis["roi_percent"] = (roi_analysis["profit"] / _safe_cost * 100).fillna(0)
     
     best_roi = roi_analysis.loc[roi_analysis["roi_percent"].idxmax()] if len(roi_analysis) > 0 else None
     
