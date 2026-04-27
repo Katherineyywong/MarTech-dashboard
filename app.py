@@ -410,13 +410,6 @@ def _inject_style(theme: str = "white") -> None:
     )
 
 
-_CACHE_DIR = Path(__file__).parent / "data" / "_cache"
-_MERGED_CACHE = _CACHE_DIR / "merged.feather"
-
-
-def _csv_mtime_key(base_dir: Path) -> str:
-    files = ["sales.csv", "customers.csv", "products.csv", "stores.csv"]
-    return "_".join(str(int((base_dir / f).stat().st_mtime)) for f in files)
 
 
 def _build_merged_from_csv(base_dir: Path) -> pd.DataFrame:
@@ -473,25 +466,7 @@ def _build_merged_from_csv(base_dir: Path) -> pd.DataFrame:
 
 @st.cache_resource(show_spinner="載入資料中…")
 def load_data(base_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    import pyarrow.feather as feather
-
-    mtime_key = _csv_mtime_key(base_dir)
-    mtime_file = _CACHE_DIR / "mtime_key.txt"
-
-    if _MERGED_CACHE.exists() and mtime_file.exists() and mtime_file.read_text().strip() == mtime_key:
-        merged = feather.read_feather(_MERGED_CACHE)
-    else:
-        merged = _build_merged_from_csv(base_dir)
-        # Encode categoricals into the feather file — loads pre-typed on next start
-        for col in ["brand", "category", "country", "city", "store_type",
-                    "loyalty_label", "customer_stage", "rfm_segment"]:
-            if col in merged.columns:
-                merged[col] = merged[col].astype("category")
-        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        feather.write_feather(merged, _MERGED_CACHE)
-        mtime_file.write_text(mtime_key)
-
-    # _order_date is cheap to derive and avoids Python-date feather round-trip issues
+    merged = _build_merged_from_csv(base_dir)
     merged["_order_date"] = merged["order_date"].dt.date
 
     quality = pd.DataFrame(
